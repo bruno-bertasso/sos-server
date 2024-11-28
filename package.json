@@ -1,15 +1,29 @@
 {
+  "type": "module",
   "name": "sos-server",
   "scripts": {
-    "dev": "bun run --hot src/index.ts | pino-pretty"
+    "dev": "bun run --hot src/index.ts | pino-pretty",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose up",
+    "db:push": "npx drizzle-kit push",
+    "db:migrate": "npx drizzle-kit migrate",
+    "db:generate": "npx drizzle-kit generate",
+    "db:studio": "npx drizzle-kit studio",
+    "db:verify": "docker ps | grep dragonfly",
+    "db:logs": "docker logs -f docker_dragonfly_1",
+    "db:seed": "bun run ./src/database/seed.ts"
   },
   "dependencies": {
-    "duckdb-async": "^1.1.1",
+    "drizzle-orm": "^0.36.4",
     "hono": "^4.6.3",
     "hono-pino": "^0.3.0",
-    "pino": "^9.5.0"
+    "pg": "^8.13.1",
+    "pino": "^9.5.0",
+    "postgres": "^3.4.5"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@types/pg": "^8.11.10",
+    "drizzle-kit": "^0.28.1"
   }
 }

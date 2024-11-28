@@ -1,11 +1,18 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { prettyJSON } from 'hono/pretty-json'
-import pino from "pino";
-import {logger as h_pino} from "hono-pino";
-import { Database } from "bun:sqlite";
+import { pino } from "pino";
+import  {IItens, ILog,  ICompra} from "./common.js" 
+import {routes} from './routes.js'
+import { db } from "./database/db.js";
+import * as schema from "./database/schema.js";
+import { sql } from "drizzle-orm";
+import { eq, lt, gte, ne } from 'drizzle-orm';
+
+const uri = "mongodb://localhost:27018";
 
 const app = new Hono()
+
 const logger = pino({
   level: 'trace'
 })
@@ -13,158 +20,132 @@ const logger = pino({
 
 app.use(cors());
 app.use(prettyJSON());
-// app.use(h_pino())
-
-
-
-//------------------------------
-
-interface Compra  {
-  numeroUasg: number,
-  numero: number,
-  modalidade: number,
-  ano: number,
-  possuiEventoQueImpedeAcaoNaCompra: boolean
-}
-
-interface Itens  {
-  fase: string,
-  situacao: string
-}
-
-interface Log {
-  path: string,
-  message: string
-}
-
-class RegistroCompra  {
-  id!: string;
-  relevante!: boolean;
-  foiProcessada!: boolean;
-  foiConfirmada!: boolean;
-}
-
-/** 
- * Banco de Dados
- * -----------------
- * 
- * Uma compra possui:
- * 1. Chave
- * 2. Relevante, será true quando ao ser processada for marcada como uma compra de interesse
- * 3. Foi processada, se a extensão tentou processar essa compra;
- * 4. Foi confirmada, o proxy conseguiu interceptar a chamada de itens na página, ou seja, hcaptcha não bloqueou.
-*/
-
-
-let db: Database;
-(async function initDB(){
-  logger.info("[Server][SQLite]: Iniciando")
-  db = new Database("mydb.sqlite", { create: true, safeIntegers: false });
-  logger.info("[Server][SQLite]: Tabela compras criada")
-  db.run("CREATE TABLE IF NOT EXISTS compras (id TEXT PRIMARY KEY, relevante INTEGER, foiProcessada INTEGER, foiConfirmada INTEGER)");
-})();
-
 
 //--------------------------------
 
 
 /************************************************************************************
  * Inserir todas as compras
+ * Contexto:
+ * Ao processar todas as comprasm cria-se o início do banco de dados.
  ************************************************************************************/
-app.post('/compras', async (c) => {
+app.post(routes.compras, async (c) => {
 
-  const body: Array<Compra> = await c.req.json()
-  const filtered = body.filter( c => c.possuiEventoQueImpedeAcaoNaCompra == false)
-  
+  const body: Array<ICompra> = await c.req.json()
+  const filtered = body.filter(c => c.possuiEventoQueImpedeAcaoNaCompra == false)
+
   logger.debug(`[Server] POST /Compras - Compras Recebidas ${body.length}`)
   logger.debug(`[Server] POST /Compras - Compras Filtradas ${filtered.length}`)
-  
-  const ids = filtered.map( c => {
+
+  const comprasDocs = filtered.map(c => {
     return {
-      $id: `${c.numeroUasg.toString().padStart(6, '0')}${c.modalidade.toString().padStart(2, '0')}${c.numero.toString().padStart(5, '0')}${c.ano.toString().padStart(4, '0')}`,
-      $relevante: false,
-      $foiProcessada: false,
-      $foiConfirmada: false,
+      codigoCompra: `${c.numeroUasg.toString().padStart(6, '0')}${c.modalidade.toString().padStart(2, '0')}${c.numero.toString().padStart(5, '0')}${c.ano.toString().padStart(4, '0')}`,
+      foiRelevante: false,
+      foiProcessada: false,
+      foiConfirmada: false    
     }
   })
-  
-  const insert = db.prepare("INSERT OR REPLACE INTO  compras (id, relevante, foiProcessada, foiConfirmada) VALUES ($id, $relevante, $foiProcessada, $foiConfirmada)");
-  const insertCompras = db.transaction(compras => {
-    for (const compra of compras){
-      // console.log(compra)
-      insert.run(compra)
-    };
-    return compras.length;
-  });
 
+  try {
+    const resultadoInsercao = await db.insert(schema.compras).values(comprasDocs).returning();
+    const quantidadeDocumentos = resultadoInsercao.length
 
-  const count = insertCompras(ids);
-
-  logger.debug(`[Server][SQlite] POST /Compras - Inserção de ${count} registros na tabela compras`)
-
-  return c.json({
-    success: true,
-    data: body,
-   
-  })
+    logger.debug(`[Server][MongoDB] POST /Compras - Inserção de ${quantidadeDocumentos} registro na tabela compras`)
+    return c.json({
+      error: false,
+      documentos_inseridos: quantidadeDocumentos,
+    })
+  }
+  catch (e) {
+    return c.json({
+      error: true,
+      error_description: e,
+      body: body
+    })
+  }
 })
 
 /************************************************************************************
  * Listar todas as compras
  ************************************************************************************/
-app.get('/compras', async (c) => {
+app.get(routes.compras, async (c) => {
 
 
-  const query = db.query(`SELECT * FROM compras`).as(RegistroCompra);
-  const data = query.all()
+  const data = await db.select().from(schema.compras)
 
   logger.debug(`[Server] GET /Compras - recuperando registros da tabela compras`)
   return c.json({
     success: true,
     data: data,
-   
+
   })
+})
+
+/************************************************************************************
+ * Mostra Compra
+ ************************************************************************************/
+app.get(routes.mostrar_compra, async (c) => {
+
+
+  const codigo_compra = c.req.param('codigo') ?? ""
+  const data = await db.select().from(schema.compras).where(eq(schema.compras.codigoCompra, codigo_compra)).limit(1)
+
+  // Existe registro
+  if (data.length === 1) {
+    logger.info(`[Server] Get Compra ${codigo_compra}`)
+    return c.json({
+      error: false,
+      compra: data[0]
+    })
+  }
+
+  logger.info(`[Server] Não há próxima compra`)
+  return c.json({
+    error: true,
+    error_description: "Compra não encontrada",
+    compra: null
+  })
+
 })
 
 /************************************************************************************
  * Mostrar progresso
  ************************************************************************************/
-app.get('/progresso', async (c) => {
+app.get(routes.progresso, async (c) => {
 
 
-  const query = db.query(`SELECT id FROM compras WHERE relevante = TRUE`).as(RegistroCompra);
-  const data = query.all()
 
+  const compras_relevantes =  await db.$count(schema.compras, eq(schema.compras.foiRelevante, false));
+ 
   logger.debug(`[Server] GET /progresso - recuperando progresso no processamento de compras`)
 
-  const query_processadas = db.query(`SELECT COUNT(*) AS processadas FROM compras WHERE foiProcessada = TRUE`).as(RegistroCompra);
-  const processadas = query_processadas.all()
-  
+  const compras_processadas =  await db.$count(schema.compras, eq(schema.compras.foiProcessado, false));
+
   return c.json({
     success: true,
-    processadas: processadas[0], 
-    relevantes: data.length,
-    data: data
+    compras_relevantes: compras_relevantes,
+    compras_processadas: compras_processadas,
   })
 })
 
 
 
 /************************************************************************************
- * Retorna próxima compra a ser processada
+ * Se existir, retorna o id da próxima compra que ainda não foi processada da base de dados.
+ * Se não retorna o id da próxima compra como null.
  ************************************************************************************/
-app.get('/compra', async (c) => {
+app.get(routes.proxima_compra, async (c) => {
 
 
-  const query = db.query(`SELECT * FROM compras WHERE foiConfirmada=FALSE`).as(RegistroCompra);
-  const data = query.get()
+  
+  const data = await db.select().from(schema.compras).where(eq(schema.compras.foiConfirmado, false)).limit(1)
 
   // Existe registro
-  if(data){
-    logger.info(`[Server] Próxima compra será ${data?.id}`)
+  if (data.length == 1) {
+    logger.info(`[Server] Próxima compra será ${data[0].id}`)
     return c.json({
       error: false,
-      proxima_compra: data.id,
+      proxima_compra: data[0].codigoCompra,
     })
   }
 
@@ -179,26 +160,26 @@ app.get('/compra', async (c) => {
 /************************************************************************************
  * Processar compra
  ************************************************************************************/
-app.get('/processar/:id', async (c) => {
+app.get(routes.processar_compra, async (c) => {
 
-  const id = c.req.param('id')
+  
+  const codigo_compra = c.req.param('codigo') ?? ""
+
+  const data = await db.update(schema.compras).set({ foiProcessado: true, processado_em: new Date() }).where(eq(schema.compras.codigoCompra, codigo_compra)).returning();
   
 
-  const query = db.query(`UPDATE compras SET foiProcessada = TRUE WHERE id ="${id}"`);
-  const data = query.run()
 
-
- 
-  if(data.changes > 0){
-    logger.debug(`[Server] Processou compra ${id}`)
+  if (data.length > 0) {
+    logger.debug(`[Server] Processou compra ${codigo_compra}`)
     return c.json({
       error: false,
-      compra_processada: id,
-      
+      compra_processada: codigo_compra,
+      processado_em: data[0].processado_em
+
     })
   }
 
-  logger.error(`[Server] Não foi processada compra ${id}`)
+  logger.error(`[Server] Não foi processada compra ${codigo_compra}`)
   return c.json({
     error: true
   })
@@ -208,42 +189,24 @@ app.get('/processar/:id', async (c) => {
 /************************************************************************************
  * Confirmar compra
  ************************************************************************************/
-app.post('/confirmar/:id', async (c) => {
+app.post(routes.confirmar_compra, async (c) => {
 
-  const id = c.req.param('id')
-  const body: Array<Itens> = await c.req.json()
+  const codigo_compra = c.req.param('codigo') ?? ""
+  const body: Array<IItens> = await c.req.json()
 
-  const hasAR = body.some(item => item.fase == "AR" && item.situacao == "1") ? "TRUE" : "FALSE";
-  const query = db.query(`UPDATE compras SET foiConfirmada = TRUE, relevante = ${hasAR} WHERE id = "${id}"`);
-  const data = query.run()
+  const hasAR = body.some(item => item.fase == "AR" && item.situacao == "1") ? true : false;
+  const data = await db.update(schema.compras).set({ foiConfirmado: true, foiRelevante: hasAR, confirmado_em: new Date()  }).where(eq(schema.compras.codigoCompra, codigo_compra)).returning();
+  
 
-  logger.info(`[Server] confirmada compra ${id}`,data)
+  logger.info(`[Server] confirmada compra ${codigo_compra}`, data)
   //logger.debug(`[Server] Itens :\n${JSON.stringify(body,null,2)}`)
-  if(data.changes > 0){
+  if (data.length > 0) {
     return c.json({
       error: false,
-      compra_confirmada: id,
-      relevante: hasAR
-    })
-  }
+      compra_confirmada: data[0].codigoCompra,
+      relevante: hasAR,
+      confirmado_em: data[0].confirmado_em
 
-  return c.json({
-    error: true
-  })
-
-})
-
-app.get('/reset/', async (c) => {
-
-  const query = db.query(`UPDATE compras SET foiProcessada = FALSE`);
-  const data = query.run()
-
-  logger.info(data)
-  if(data.changes > 0){
-    return c.json({
-      error: false,
-      compras_resetadas: data.changes,
-      
     })
   }
 
@@ -254,10 +217,36 @@ app.get('/reset/', async (c) => {
 })
 
 
-app.post('/log/:level', async (c) => {
+
+/************************************************************************************
+ * Resetar Banco
+ ************************************************************************************/
+app.get(routes.resetar, async (c) => {
+
+
+
+  const compras_deletadas =  await db.delete(schema.compras).returning();
+  const metricas_deletadas =  await db.delete(schema.metricas).returning();
+
+ 
+  logger.debug(`[Server] GET /progresso - recuperando progresso no processamento de compras`)
+
+  
+
+  return c.json({
+    success: true,
+    compras_relevantes: compras_deletadas.length,
+    compras_processadas: metricas_deletadas.length
+  })
+})
+
+
+
+// Log
+app.post(routes.log, async (c) => {
 
   const level = c.req.param('level')
-  const body: Log = await c.req.json()
+  const body: ILog = await c.req.json()
   logger.info(`[${level}] - ${body.path}\n ${body.message}\n`)
 
   return c.json({

@@ -31,13 +31,12 @@ def response(flow: http.HTTPFlow):
     # Nesse caso, devo guardar todas as compras na base de dados
     if path == "/comprasnet-fase-externa/public/v1/compras":
         data = flow.response.json()
-        #requests.post(f'http://mitmproxy:3000/log/proxy', json = { path: "[Interceptado][Response][Compras]", message: f"{path}" })
-        #logger.info(f"[BODY] {data}")
         url = 'http://mitmproxy:3000/compras'
         x = requests.post(url, json = data)
         logger.info(f"[Backend][Response] {url} \n {x.text}")
 
 
+    # Se foi uma intercepção de itens
     if m != None:
         data = flow.response.json()
         url = f'http://mitmproxy:3000/confirmar/{m.group(1)}'

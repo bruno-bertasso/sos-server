@@ -1,0 +1,138 @@
+{
+  "id": "eaf6379a-7b98-410f-a6bd-3428ffc966df",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.compras": {
+      "name": "compras",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "codigo_compra": {
+          "name": "codigo_compra",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "foi_processado": {
+          "name": "foi_processado",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "foi_confirmado": {
+          "name": "foi_confirmado",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "foi_relevante": {
+          "name": "foi_relevante",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "compras_codigo_compra_unique": {
+          "name": "compras_codigo_compra_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "codigo_compra"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.metricas": {
+      "name": "metricas",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "codigo_processamento": {
+          "name": "codigo_processamento",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "compras_processadas": {
+          "name": "compras_processadas",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "compras_total": {
+          "name": "compras_total",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "data_processamento": {
+          "name": "data_processamento",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "inicio_processamento": {
+          "name": "inicio_processamento",
+          "type": "time",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fim_processamento": {
+          "name": "fim_processamento",
+          "type": "time",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "metricas_codigo_processamento_unique": {
+          "name": "metricas_codigo_processamento_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "codigo_processamento"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

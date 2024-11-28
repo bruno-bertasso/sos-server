@@ -1,0 +1,31 @@
+{
+    "numeroUasg": 114624,
+    "modalidade": 6,
+    "numero": 1,
+    "ano": 2022,
+    "nomeUasg": "UNIDADE ESTADUAL DO IBGE EM SANTA CATARINA",
+    "ufUasg": "SC",
+    "caracteristica": "1",
+    "formaRealizacao": "1",
+    "criterioJulgamento": "7",
+    "equalizacaoIcms": false,
+    "situacaoCompraFaseExterna": "PD",
+    "faseCompraFaseExterna": "4",
+    "homologada": false,
+    "possuiAvisoDeEvento": false,
+    "possuiEventoQueImpedeAcaoNaCompra": false,
+    "modoDisputa": "A",
+    "dataHoraPrevisaoAbertura": "2022-02-03T08:00:00",
+    "dataHoraInicioPropostas": "2022-01-27T23:43:49.395",
+    "dataHoraFimPropostas": "2022-02-03T07:59:59",
+    "dataHoraInicioDisputa": "2022-02-03T08:00:00",
+    "dataHoraFimDisputa": "2022-02-03T14:00:00",
+    "dataHoraAbertura": "2022-02-03T08:00:00.93345",
+    "emergencial": false,
+    "participacaoExclusivaMeEppOuEquiparadas": true,
+    "objeto": "O objeto da presente dispensa é a escolha da proposta mais vantajosa para a aquisição de materiais permanentes necessários para o desenvolvimento e cumprimento das atividades administrativas e de coleta relacionadas ao Censo Demográfico 2022, conforme condições, quantidades e exigências estabelecidas na tabela do item 1.1. do Termo de Referência, Anexo II do Aviso de Dispensa Eletrônica.",
+    "julgamentoIniciado": true,
+    "configuracao": {
+        "analisePropostasAutomatica": false
+    }
+}
