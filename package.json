@@ -3,8 +3,9 @@
   "name": "sos-server",
   "scripts": {
     "dev": "bun run --hot src/index.ts | pino-pretty",
+    "db:ps": "docker container ps",
     "db:up": "docker compose up -d",
-    "db:down": "docker compose up",
+    "db:down": "docker compose down",
     "db:push": "npx drizzle-kit push",
     "db:migrate": "npx drizzle-kit migrate",
     "db:generate": "npx drizzle-kit generate",
